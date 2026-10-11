@@ -1,0 +1,9 @@
+# DEM (있으면 사용, 해상도 적합성 검사)
+id: dem
+kind: raster
+source: 국토정보플랫폼 DEM / Copernicus GLO-30 / 3-1단계 생성 DEM
+folder: raw/dem
+patterns: ["*.tif", "*.img"]
+expected_crs: null
+min_pixels_per_parcel: 25   # 필지 하나에 픽셀이 이보다 적으면 경고 (90m DEM 사례)
+license: 자료별 확인

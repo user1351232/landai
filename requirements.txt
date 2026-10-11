@@ -1,0 +1,10 @@
+# 웹 화면 실행에 필요한 가벼운 구성 (Streamlit Cloud 가 이 파일로 설치합니다)
+streamlit>=1.40
+folium>=0.17
+streamlit-folium>=0.22
+pandas>=2.0
+pyyaml>=6.0
+python-dotenv>=1.0
+requests>=2.31
+shapely>=2.0
+pyproj>=3.6

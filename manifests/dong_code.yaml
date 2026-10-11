@@ -1,0 +1,11 @@
+# 법정동 코드 대조표
+id: dong_code
+kind: table
+source: 행정표준코드관리시스템 법정동코드 전체자료
+folder: raw/dong_code
+patterns: ["*.txt", "*.csv", "*.xlsx"]
+expected_columns: []
+pnu_column: null
+year_column: null
+code_column: auto       # 10자리 법정동코드 컬럼 자동 탐지
+license: 공공누리

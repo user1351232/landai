@@ -1,0 +1,11 @@
+# 개발행위허가
+id: permits
+kind: table
+source: 공공데이터포털 개발행위허가정보 (파일 또는 API)
+folder: raw/permits
+patterns: ["*.csv", "*.xlsx"]
+expected_columns: []    # 처음 실행하면 실제 컬럼 목록을 보여줍니다. 그걸 보고 채우세요
+pnu_column: auto        # auto = 컬럼 이름으로 자동 탐지 (PNU, 고유번호 등)
+year_column: auto       # auto = 허가일·일자 컬럼 자동 탐지
+expected_years: null    # 예: [2015, 2025]. 비워 두면 자료의 최소~최대 연도로 검사
+license: 공공누리 (자료 페이지에서 확인)

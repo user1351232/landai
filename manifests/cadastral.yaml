@@ -1,0 +1,12 @@
+# 연속지적도 (필지 경계와 필지번호의 기준 자료)
+id: cadastral
+kind: vector            # vector | table | raster | topo
+source: 브이월드 / 국가공간정보포털 연속지적도
+folder: raw/cadastral
+patterns: ["*.shp", "*.gpkg", "*.zip"]
+expected_crs: EPSG:5186 # 실제 파일의 좌표계와 다르면 수신 검사가 알려줍니다
+expected_columns: [PNU, JIBUN]
+pnu_column: PNU
+year_column: null
+reference_year: null
+license: 공공누리 (자료 페이지에서 확인)

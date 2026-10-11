@@ -1,0 +1,13 @@
+# 완주군 (확장 시험용, 13단계)
+id: wanju
+name: 완주군
+sido_name: 전북특별자치도
+
+sido_code: "52"
+legacy_sido_code: "45"
+sigungu_codes:
+  "52710": 완주군
+
+bbox_wgs84: [126.95, 35.70, 127.50, 36.15]
+work_crs: EPSG:5186
+slope_limit_deg: null

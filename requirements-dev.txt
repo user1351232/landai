@@ -1,0 +1,6 @@
+# 개발용 전체 구성: 웹 화면 + 원본 자료 수신 검사(공간 자료, DEM, 엑셀)
+-r requirements.txt
+geopandas>=0.14
+pyogrio>=0.7
+rasterio>=1.3
+openpyxl>=3.1

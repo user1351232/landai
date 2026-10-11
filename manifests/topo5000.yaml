@@ -1,0 +1,8 @@
+# 1:5,000 수치지형도 (등고선·표고점으로 5m DEM 생성, 3-1단계)
+id: topo5000
+kind: topo
+source: 국토정보플랫폼 수치지도 1:5,000
+folder: raw/topo5000
+patterns: ["*.zip", "*.shp", "*.dxf", "*.ngi"]
+expected_crs: null      # 도엽마다 다를 수 있어 파일별로 확인
+license: 국토지리정보원 이용 조건 확인
