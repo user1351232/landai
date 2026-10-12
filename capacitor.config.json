@@ -1,0 +1,8 @@
+{
+  "appId": "kr.landai.analysis",
+  "appName": "LandAI",
+  "webDir": "app",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}

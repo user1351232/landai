@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>위치 기반 AI 토지 분석</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>위치 기반 AI 토지 분석</h1>
+    <div class="top-right">
+      <select id="region" aria-label="대상 지역"></select>
+      <button id="open-settings" class="ghost" type="button">설정</button>
+    </div>
+  </header>
+
+  <section class="toolbar" aria-label="위치 입력">
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" data-mode="coord">위경도</button>
+      <button type="button" class="tab" data-mode="address">주소</button>
+      <button type="button" class="tab" data-mode="click">지도 클릭</button>
+      <button type="button" class="tab" data-mode="gps">내 위치</button>
+    </div>
+    <form id="input-form" class="inputs">
+      <div class="mode" data-mode="coord">
+        <input id="lat" inputmode="decimal" placeholder="위도 (예: 35.8242)" aria-label="위도">
+        <input id="lon" inputmode="decimal" placeholder="경도 (예: 127.1480)" aria-label="경도">
+      </div>
+      <div class="mode hidden" data-mode="address">
+        <input id="address" placeholder="예: 전주시 완산구 노송광장로 10" aria-label="주소">
+      </div>
+      <div class="mode hidden hint" data-mode="click">지도에서 분석할 곳을 누르세요.</div>
+      <div class="mode hidden hint" data-mode="gps">'분석하기'를 누르면 지금 있는 위치를 분석합니다.</div>
+      <button id="run" type="submit" class="primary">분석하기</button>
+    </form>
+  </section>
+
+  <main class="body">
+    <div id="map" aria-label="지도"></div>
+    <aside id="panel" class="panel" aria-live="polite">
+      <p class="placeholder">위치를 입력하고 '분석하기'를 누르세요.</p>
+    </aside>
+  </main>
+
+  <footer class="disclaimer">
+    AI가 만든 참고용 분석 결과이며 법적 효력이 없습니다. 정확한 내용은 토지이용계획확인서 등 공식 서류로 확인하세요.
+    지도·필지 © VWorld
+  </footer>
+
+  <dialog id="settings">
+    <form method="dialog" class="settings-form">
+      <h2>설정</h2>
+      <label>브이월드 인증키
+        <input id="set-vworld-key" autocomplete="off" spellcheck="false" placeholder="빌드에 넣은 키를 쓰려면 비워 두세요">
+      </label>
+      <label>브이월드 등록 서비스 URL
+        <input id="set-vworld-domain" autocomplete="off" spellcheck="false" placeholder="http://localhost">
+      </label>
+      <label>배경지도
+        <select id="set-basemap">
+          <option value="Satellite">브이월드 위성</option>
+          <option value="Base">브이월드 일반</option>
+          <option value="osm">OpenStreetMap</option>
+        </select>
+      </label>
+      <p class="small" id="platform-info"></p>
+      <div class="row">
+        <button value="cancel" class="ghost">닫기</button>
+        <button id="save-settings" value="save" class="primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="vendor/leaflet/leaflet.js"
+          onerror="var s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';document.head.appendChild(s);var l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.appendChild(l);"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

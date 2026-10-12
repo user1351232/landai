@@ -1,4 +1,6 @@
-"""위치 기반 AI 토지 분석 플랫폼 - 웹 화면 (v0.5)
+"""위치 기반 AI 토지 분석 플랫폼 - 개발용 웹 화면 (국내 노트북에서 실행)
+
+앱(윈도우·안드로이드)은 app/ 폴더에 있습니다.
 
 실행:  streamlit run app.py      (또는 python -m landai web)
 """
@@ -13,7 +15,6 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from landai.apis import vworld
-from landai.apis.http import using_proxy
 from landai.config import get_key, load_region
 from landai.pipeline import analyze
 
@@ -74,7 +75,6 @@ with st.sidebar:
     st.divider()
     base = st.radio("배경지도", ["브이월드 위성", "브이월드 일반", "OpenStreetMap"])
     st.caption("지도가 회색으로 나오면 OpenStreetMap 으로 바꿔 보세요.")
-    st.caption("API 호출 경로: " + ("서울 중계 서버" if using_proxy() else "직접 호출"))
 
 # ---------------- 분석 ----------------
 result = None

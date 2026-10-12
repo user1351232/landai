@@ -1,0 +1,75 @@
+# 앱 만들기 (윈도우 설치 파일 + 안드로이드 APK)
+
+컴퓨터에 아무것도 설치하지 않고, GitHub 이 대신 앱을 빌드해서 다운로드 링크를 만들어 줍니다.
+
+```
+코드 올리기 (GitHub) → GitHub Actions 가 자동 빌드 (10~20분)
+→ Releases 의 "앱 최신 빌드" 에 윈도우 설치 파일과 안드로이드 APK 가 올라옴
+```
+
+앱은 사용자 기기(국내)에서 브이월드를 직접 부르기 때문에 해외 서버를 거치지 않습니다.
+
+## 1. 코드 올리기 (덮어쓰기)
+
+1. 저장소 → **Add file → Upload files** → 압축을 푼 `landai` 폴더의 **내용물 전체** 를 끌어다 놓기 → **Commit changes**
+2. 이번 버전에서 **지울 파일** (저장소에서 파일을 열고 휴지통 아이콘 → Commit):
+   - `proxy` 폴더 안의 파일 전부 (`proxy/README.md`, `proxy/requirements.txt`, `proxy/vercel.json`, `proxy/api/relay.py`)
+   - `tests/test_proxy.py`
+
+## 2. 자동 빌드 파일 만들기 (처음 한 번)
+
+점(.)으로 시작하는 폴더는 끌어다 놓기로 올라가지 않아서 직접 만듭니다.
+
+1. 저장소 → **Add file → Create new file**
+2. 파일 이름 칸에 정확히 입력: `.github/workflows/build-apps.yml`
+3. 압축 파일의 `docs/build-apps.yml` 을 메모장으로 열어 **전체 복사** → 내용 칸에 붙여 넣기
+4. **Commit changes**
+
+## 3. 키 넣기 (GitHub Secrets, 처음 한 번)
+
+1. 저장소 → **Settings → Secrets and variables → Actions → New repository secret**
+2. 두 개를 만듭니다.
+
+| Name | Secret |
+| --- | --- |
+| `VWORLD_KEY` | 브이월드 인증키 |
+| `VWORLD_DOMAIN` | 브이월드 키에 등록한 서비스 URL (예: `http://localhost`) |
+
+- 키는 저장소에 보이지 않고, 빌드할 때만 앱 안에 들어갑니다.
+- 앱 파일을 받은 사람이 마음먹으면 키를 꺼낼 수 있습니다. 무료 키라 위험은 작지만, 싫으면 Secrets 를 만들지 말고 앱의 **설정** 화면에서 키를 직접 넣으세요.
+
+## 4. 빌드 확인
+
+1. 저장소 위쪽 **Actions** 탭 → 왼쪽 **앱 빌드 (윈도우·안드로이드)**
+2. 코드를 올리면 자동으로 시작됩니다. 바로 돌리려면 **Run workflow** 버튼.
+3. 4개 작업(분석 로직 시험 → 안드로이드·윈도우 → 다운로드 링크 갱신)이 모두 **초록 체크** 면 성공입니다.
+4. 빨간 X 가 나오면 그 작업을 눌러 빨간 줄 부분을 캡처해서 공유하세요.
+
+## 5. 다운로드와 설치
+
+저장소 오른쪽 **Releases → 앱 최신 빌드**, 또는 고정 링크:
+
+- 윈도우: `https://github.com/user1351232/landai/releases/download/app-latest/landai-windows-setup.exe`
+- 안드로이드: `https://github.com/user1351232/landai/releases/download/app-latest/landai-android.apk`
+
+발표 때는 안드로이드 링크를 QR 코드로 만들어 보여 주면 청중이 바로 설치할 수 있습니다.
+
+| 기기 | 설치할 때 |
+| --- | --- |
+| 윈도우 | 서명되지 않은 앱이라 "Windows의 PC 보호" 창이 뜹니다 → **추가 정보 → 실행** |
+| 안드로이드 | "출처를 알 수 없는 앱" 허용이 필요합니다 (설치할 때 안내가 뜸) |
+
+## 6. 처음 실행
+
+1. 오른쪽 위 **설정** → "실행 환경: 윈도우 앱 / 스마트폰 앱", "브이월드 키: 있음" 확인
+2. 위경도 기본값 그대로 **분석하기** → 전주시청 부근 필지가 나오면 성공
+3. **주소**, **지도 클릭**, **내 위치**(스마트폰은 위치 권한 허용) 도 시험
+
+## 문제가 생기면
+
+| 증상 | 해결 |
+| --- | --- |
+| 지도가 회색 | 설정 → 배경지도 **OpenStreetMap**. 브이월드 지도는 키 등록 주소와 앱 주소가 달라서 막힐 수 있습니다 |
+| 필지 조회 "브이월드 오류 INCORRECT_KEY" 등 | 브이월드에서 서비스유형 **APP(모바일, 솔루션 등)** 으로 키를 하나 더 발급 → Secrets 의 `VWORLD_KEY` 교체 → Run workflow |
+| "키가 없습니다" | Secrets 이름이 정확한지(`VWORLD_KEY`) 확인, 또는 설정 화면에서 직접 입력 |
+| 빌드 실패 | 실패한 작업의 로그를 캡처해서 공유 |

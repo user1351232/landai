@@ -1,0 +1,23 @@
+{
+  "name": "landai-app",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "위치 기반 AI 토지 분석 앱 (윈도우·안드로이드 공용)",
+  "scripts": {
+    "test": "node --test \"tests_js/*.test.mjs\"",
+    "vendor": "node scripts/vendor.mjs",
+    "write-keys": "node scripts/write-keys.mjs",
+    "tauri": "tauri",
+    "cap": "cap"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

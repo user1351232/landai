@@ -11,7 +11,7 @@ import sys
 
 import requests
 
-from landai.apis.http import ApiError, fetch_json, using_proxy
+from landai.apis.http import ApiError, fetch_json
 from landai.config import get_key
 
 TEST_ADDRESS = "전북특별자치도 전주시 완산구 효자로 225"
@@ -63,7 +63,6 @@ def main() -> int:
     checks = {"브이월드": check_vworld, "도로명주소": check_juso, "공공데이터포털": check_data_go_kr}
     mark = {"ok": "정상", "fail": "실패", "skip": "건너뜀"}
     failed = False
-    print(f"호출 경로: {'서울 중계 서버 (PROXY_URL)' if using_proxy() else '직접 호출'}")
     for name, fn in checks.items():
         try:
             status, msg = fn()
