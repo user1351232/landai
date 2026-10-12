@@ -5,11 +5,9 @@
 
 from __future__ import annotations
 
-import requests
-
+from landai.apis.http import ApiError, fetch_json
 from landai.config import get_key
 
-BASE = "https://api.vworld.kr/req"
 TIMEOUT = 15
 PARCEL_LAYER = "LP_PA_CBND_BUBUN"   # 연속지적도
 
@@ -40,15 +38,11 @@ def _params(extra: dict) -> dict:
     return params
 
 
-def _get(url: str, params: dict) -> dict:
+def _get(target: str, params: dict) -> dict:
     try:
-        r = requests.get(url, params=params, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.json()
-    except requests.RequestException as e:
-        raise VworldError(f"브이월드 접속 실패: {type(e).__name__} (인터넷 연결 확인)") from e
-    except ValueError as e:
-        raise VworldError("브이월드 응답이 JSON이 아닙니다. 키와 등록 URL(VWORLD_DOMAIN)을 확인하세요.") from e
+        return fetch_json(target, params, timeout=TIMEOUT)
+    except ApiError as e:
+        raise VworldError(f"브이월드 {e}") from e
 
 
 def _error_text(resp: dict) -> str:
@@ -59,7 +53,7 @@ def _error_text(resp: dict) -> str:
 def geocode(address: str) -> dict | None:
     """주소를 좌표로. 도로명 주소로 먼저 찾고, 없으면 지번 주소로 찾습니다."""
     for kind in ("road", "parcel"):
-        body = _get(f"{BASE}/address", _params({
+        body = _get("vworld_address", _params({
             "service": "address", "request": "getcoord", "version": "2.0",
             "crs": "epsg:4326", "address": address, "refine": "true",
             "simple": "false", "type": kind,
@@ -78,7 +72,7 @@ def geocode(address: str) -> dict | None:
 
 def parcels_at(lon: float, lat: float) -> list[dict]:
     """좌표가 들어 있는 필지(GeoJSON Feature 목록). 도로·하천 위면 빈 목록."""
-    body = _get(f"{BASE}/data", _params({
+    body = _get("vworld_data", _params({
         "service": "data", "request": "GetFeature", "data": PARCEL_LAYER,
         "geomFilter": f"POINT({lon} {lat})", "crs": "EPSG:4326",
         "geometry": "true", "attribute": "true", "size": "10", "page": "1",

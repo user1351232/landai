@@ -11,6 +11,7 @@ import sys
 
 import requests
 
+from landai.apis.http import ApiError, fetch_json, using_proxy
 from landai.config import get_key
 
 TEST_ADDRESS = "전북특별자치도 전주시 완산구 효자로 225"
@@ -27,8 +28,7 @@ def check_vworld() -> tuple[str, str]:
         "simple": "false", "format": "json", "type": "road", "key": key,
         "domain": get_key("VWORLD_DOMAIN") or "http://localhost",
     }
-    r = requests.get("https://api.vworld.kr/req/address", params=params, timeout=TIMEOUT)
-    body = r.json().get("response", {})
+    body = fetch_json("vworld_address", params, timeout=TIMEOUT).get("response", {})
     status = body.get("status")
     if status == "OK":
         p = body["result"]["point"]
@@ -43,9 +43,7 @@ def check_juso() -> tuple[str, str]:
         return "skip", "JUSO_KEY 가 비어 있음"
     params = {"confmKey": key, "currentPage": 1, "countPerPage": 1,
               "keyword": "효자로 225", "resultType": "json"}
-    r = requests.get("https://business.juso.go.kr/addrlink/addrLinkApi.do",
-                     params=params, timeout=TIMEOUT)
-    common = r.json().get("results", {}).get("common", {})
+    common = fetch_json("juso", params, timeout=TIMEOUT).get("results", {}).get("common", {})
     if common.get("errorCode") == "0":
         return "ok", f"주소 검색 정상 (결과 {common.get('totalCount')}건)"
     return "fail", f"{common.get('errorCode')}: {common.get('errorMessage')}"
@@ -65,9 +63,12 @@ def main() -> int:
     checks = {"브이월드": check_vworld, "도로명주소": check_juso, "공공데이터포털": check_data_go_kr}
     mark = {"ok": "정상", "fail": "실패", "skip": "건너뜀"}
     failed = False
+    print(f"호출 경로: {'서울 중계 서버 (PROXY_URL)' if using_proxy() else '직접 호출'}")
     for name, fn in checks.items():
         try:
             status, msg = fn()
+        except ApiError as e:
+            status, msg = "fail", str(e)
         except requests.RequestException as e:
             status, msg = "fail", f"접속 오류: {type(e).__name__} (서버 인터넷 연결·방화벽 확인)"
         except ValueError:

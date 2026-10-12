@@ -1,6 +1,6 @@
 # 웹에 올리기 (링크로 접속하는 화면 만들기)
 
-순서: GitHub 에 코드 올리기 → Streamlit Cloud 에 연결 → 키 입력 → 링크 완성 → 브이월드 주소 맞추기
+순서: GitHub 에 코드 올리기 → Streamlit Cloud 에 연결 → 키 입력 → 링크 완성 → 브이월드 주소 맞추기 → 서울 중계 서버(Vercel) 연결
 
 ## 1. GitHub 에 코드 올리기
 
@@ -50,6 +50,30 @@
 새 버전 압축 파일을 받으면, GitHub 저장소에서 다시 **Add file → Upload files** 로 내용물을 끌어다 놓고 **Commit changes** 를 누릅니다. 같은 이름의 파일은 새 것으로 덮어쓰이고, 앱은 자동으로 새 버전이 됩니다.
 
 주의: 덮어쓰기는 같은 이름의 파일만 바꿉니다. 새 버전에서 **없어지거나 이름이 바뀐 파일은 GitHub 에 그대로 남습니다.** 그런 파일이 있으면 버전 안내에서 알려 드리니, 저장소에서 그 파일을 열고 휴지통 아이콘으로 지우세요.
+
+## 5. 서울 중계 서버 (Vercel) 연결
+
+브이월드는 해외 IP 요청을 막습니다. Streamlit Cloud 서버는 해외에 있어서 필지 조회가 "접속 실패"로 나옵니다.
+그래서 서울 지역(icn1)에서 도는 작은 중계 서버를 Vercel 무료 플랜으로 만듭니다. 코드는 저장소의 `proxy/` 폴더에 있습니다.
+
+1. **중계 비밀번호 만들기**: 영문 대소문자와 숫자를 섞어 30자 이상 아무렇게나 만들어 메모장에 적어 둡니다. (이것이 `PROXY_TOKEN`)
+2. https://vercel.com → **Sign Up** → **Hobby** → **Continue with GitHub** 로 가입·로그인합니다.
+3. **Add New… → Project** → GitHub 저장소 목록에서 `landai` 옆 **Import** 를 누릅니다.
+   - 목록에 없으면 **Adjust GitHub App Permissions** 를 눌러 `landai` 저장소 접근을 허용합니다.
+4. 설정 화면에서
+   - Project Name: `landai-proxy`
+   - Framework Preset: **Other**
+   - **Root Directory**: Edit → `proxy` 폴더 선택 (중요)
+   - **Environment Variables**: Key `PROXY_TOKEN`, Value 에 1번의 비밀번호 → Add
+5. **Deploy** 를 누릅니다. 1분 정도 걸립니다.
+6. 완료 화면의 주소(예: `https://landai-proxy.vercel.app`) 뒤에 `/api/relay?_target=ping` 을 붙여 브라우저로 엽니다.
+   - `"region": "icn1"`, `"vworld_reachable": true`, `"token_set": true` 가 보이면 성공입니다.
+7. Streamlit Cloud → **Manage app → ⋮ → Settings → Secrets** 에 두 줄을 추가하고 Save 합니다.
+   ```
+   PROXY_URL = "https://landai-proxy.vercel.app"
+   PROXY_TOKEN = "1번의 비밀번호"
+   ```
+8. 앱을 새로고침하면 왼쪽 아래에 "API 호출 경로: 서울 중계 서버" 가 보이고, 필지 조회가 됩니다.
 
 ## 알아둘 점
 
