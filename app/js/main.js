@@ -5,13 +5,14 @@ import { describeKey, getSetting, setSetting } from "./settings.js";
 import { platform } from "./http.js";
 import * as vworld from "./vworld.js";
 import { parcelRows } from "./parcel.js";
+import { GROUP_COLOR } from "./zoning.js";
 
 const $ = (sel) => document.querySelector(sel);
 const PLATFORM_KO = { "windows-app": "윈도우 앱", "mobile-app": "스마트폰 앱", browser: "웹 브라우저" };
 const GRADE_COLOR = { 확정: "#1a7f37", 복원: "#1f6feb", 추정: "#9a6700", 미연결: "#cf222e" };
 
 const state = { mode: "coord", point: null, choice: null, result: null, regionId: "jeonju" };
-let map, baseLayers = [], parcelLayer, marker;
+let map, baseLayers = [], parcelLayer, zoneLayer, marker;
 
 // ---------- 작은 도우미 ----------
 function el(tag, attrs = {}, ...children) {
@@ -56,8 +57,14 @@ function applyBasemap() {
 function drawResult() {
   const L = globalThis.L;
   parcelLayer.clearLayers();
+  zoneLayer.clearLayers();
   if (marker) { map.removeLayer(marker); marker = null; }
   const r = state.result;
+  if (r?.zoneFeature) {
+    const c = GROUP_COLOR[r.zoning?.group] || GROUP_COLOR.기타;
+    L.geoJSON(r.zoneFeature, { interactive: false,
+      style: { color: c, weight: 2, dashArray: "6 4", fillColor: c, fillOpacity: 0.12 } }).addTo(zoneLayer);
+  }
   if (r?.parcels?.length) {
     r.parcels.forEach((f, i) => {
       const chosen = r.parcel === f;
@@ -102,7 +109,8 @@ function renderPanel() {
           el("div", { class: "value" }, `${r.area_m2.toLocaleString("ko-KR")} ㎡`)),
         el("div", { class: "metric" }, el("div", { class: "label" }, "개별공시지가"), el("div", { class: "value" }, jiga))),
       el("div", { class: "code" }, r.pnu?.pnu || r.pnu?.raw || ""),
-      el("table", {}, el("tbody", {}, parcelRows(p).map(([k, v]) =>
+      zoningSection(r),
+      el("table", { class: "props" }, el("tbody", {}, parcelRows(p).map(([k, v]) =>
         el("tr", {}, el("th", {}, k), el("td", {}, String(v)))))),
     );
   }
@@ -126,13 +134,52 @@ function saveText(text, name) {
   document.body.append(a); a.click(); a.remove();
 }
 
+// 용도지역 칸: 기준 용도지역, 두 자료 일치 여부, 건축 한도, 지구·구역 목록
+function zoningSection(r) {
+  const z = r.zoning;
+  if (!z) return "";
+  const box = el("section", { class: "zoning" }, el("h3", {}, "용도지역"));
+  if (!z.zone) {
+    box.append(el("div", { class: "msg warn" }, "용도지역을 확인하지 못했습니다. 아래 분석 이력서에서 이유를 확인하세요."));
+    return box;
+  }
+  const color = GROUP_COLOR[z.group] || GROUP_COLOR.기타;
+  const AGREE = { match: "토지이용계획 · 용도지역도 일치", differ: "두 자료가 다름 (경계 필지 확인 필요)",
+    layer_only: "용도지역도 값만 확인", plan_only: "토지이용계획 값만 확인", unknown: "" };
+  box.append(el("div", { class: "zone-head" },
+    el("span", { class: "zone-chip", style: `background:${color}` }, z.zone),
+    el("span", { class: `small agree-${z.agree}` }, AGREE[z.agree] || "")));
+  if (z.split) box.append(el("div", { class: "msg warn" },
+    `용도지역 ${z.zones.length}개에 걸친 필지입니다 (${z.zones.join(", ")}). 건축 한도는 면적 비율로 나눠 계산해야 합니다.`));
+  const L = z.limits;
+  if (L) {
+    const f = (v) => v.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const law = (v, lawV, src) => (src.includes("국토계획법") ? `${v}%` : `${v}% (법정 상한 ${lawV}%)`);
+    const rows = [
+      ["건폐율 한도", law(L.bcr, L.lawBcr, L.bcrSource), L.bcrSource],
+      ["용적률 한도", law(L.far, L.lawFar, L.farSource), L.farSource],
+    ];
+    if (z.build) rows.push(
+      ["최대 건축면적", `${f(z.build.maxFootprint)} ㎡`, "면적 × 건폐율"],
+      ["최대 연면적", `${f(z.build.maxFloorArea)} ㎡`, "면적 × 용적률"]);
+    box.append(el("table", { class: "limits" }, el("tbody", {}, rows.map(([k, v, src]) =>
+      el("tr", {}, el("th", {}, k), el("td", {}, v, el("div", { class: "small" }, src)))))));
+  }
+  const list = (title, items) => items.length ? el("div", { class: "zone-list" }, el("div", { class: "small" }, title),
+    el("ul", {}, items.map((x) => el("li", {}, x.name, x.conflict ? el("span", { class: "small" }, ` · ${x.conflict}`) : "")))) : "";
+  box.append(list("용도지구", z.districts), list("용도구역·기타 규제", z.others));
+  box.append(el("p", { class: "small" },
+    "참고값입니다. 지구단위계획, 조례 개정, 도로 조건 등에 따라 실제 허용 범위는 달라질 수 있습니다."));
+  return box;
+}
+
 // ---------- 실행 ----------
 async function run() {
   const btn = $("#run");
   btn.disabled = true; btn.textContent = "분석 중…";
   try {
     state.result = await analyze(state.point[0], state.point[1], region(),
-      { choice: state.choice, fetchParcels: vworld.parcelsAt });
+      { choice: state.choice, fetchParcels: vworld.parcelsAt, fetchLandUse: vworld.landUse, fetchZone: vworld.zoneAt });
   } finally {
     btn.disabled = false; btn.textContent = "분석하기";
   }
@@ -205,6 +252,14 @@ async function checkKeys() {
       const f = await vworld.parcelsAt(127.148, 35.8242);
       return `정상 (필지 ${f.length}개)`;
     }],
+    ["용도지역도 (2D데이터 API)", async () => {
+      const z = await vworld.zoneAt(127.148, 35.8242);
+      return z ? `정상 (${z.name})` : "응답은 왔지만 결과 없음";
+    }],
+    ["토지이용계획 (국가중점 API)", async () => {
+      const items = await vworld.landUse("5211114700105680001"); // 전주시청 필지
+      return `정상 (항목 ${items.length}개)`;
+    }],
   ];
   for (const [name, fn] of tests) {
     const li = document.createElement("li");
@@ -258,7 +313,8 @@ async function init() {
     const L = await waitForLeaflet();
     map = L.map("map", { zoomControl: true }).setView([lat, lon], 13);
     L.control.scale({ imperial: false }).addTo(map);
-    parcelLayer = L.layerGroup().addTo(map);
+    zoneLayer = L.layerGroup().addTo(map);   // 용도지역 (아래)
+    parcelLayer = L.layerGroup().addTo(map); // 필지 (위)
     applyBasemap();
     map.on("click", (e) => {
       if (state.mode !== "click") return;

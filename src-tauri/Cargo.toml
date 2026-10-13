@@ -1,6 +1,6 @@
 [package]
 name = "landai"
-version = "0.6.2"
+version = "0.7.0"
 description = "위치 기반 AI 토지 분석"
 edition = "2021"
 

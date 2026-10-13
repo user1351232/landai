@@ -43,3 +43,39 @@ test("조회 오류", async () => {
   const r = await analyze(LON, LAT, R, { fetchParcels: async () => { throw new Error("브이월드 접속 실패"); } });
   assert.equal(r.status, "error");
 });
+
+const PLAN = [{ prposAreaDstrcCodeNm: "제2종일반주거지역", cnflcAt: "1" }, { prposAreaDstrcCodeNm: "방화지구", cnflcAt: "1" }];
+const ZONE = { layer: "LT_C_UQ111", name: "제2종일반주거지역", feature: { type: "Feature", geometry: SQ, properties: {} } };
+
+test("용도지역: 두 자료 일치 → 9단계, 건축 한도", async () => {
+  let asked = null;
+  const r = await analyze(LON, LAT, R, { fetchParcels: async () => [feat()],
+    fetchLandUse: async (pnu) => { asked = pnu; return PLAN; }, fetchZone: async () => ZONE });
+  assert.equal(asked, "5211110100100120003");
+  assert.deepEqual(r.log.map((s) => s.단계).slice(6), ["용도지역 조회", "용도지역 교차 확인", "건축 한도 계산"]);
+  assert.deepEqual(r.log.slice(6).map((s) => s.판정), ["통과", "통과", "통과"]);
+  assert.equal(r.zoning.zone, "제2종일반주거지역");
+  assert.match(r.log[8].결과, /건폐율 60% · 용적률 250%/);
+  assert.ok(r.zoneFeature);
+  assert.equal(r.status, "ok");
+});
+test("용도지역: 토지이용계획 실패해도 분석은 계속, 레이어 값 사용", async () => {
+  const r = await analyze(LON, LAT, R, { fetchParcels: async () => [feat()],
+    fetchLandUse: async () => { throw new Error("브이월드 오류 INCORRECT_KEY"); }, fetchZone: async () => ZONE });
+  assert.deepEqual([r.status, r.grade, r.zoning.agree], ["ok", "확정", "layer_only"]);
+  assert.equal(r.log[6].판정, "경고");
+  assert.match(r.log[6].결과, /INCORRECT_KEY/);
+});
+test("용도지역: 둘 다 실패하면 '확인 못함', 한도 단계 없음", async () => {
+  const r = await analyze(LON, LAT, R, { fetchParcels: async () => [feat()],
+    fetchLandUse: async () => [], fetchZone: async () => { throw new Error("접속 실패"); } });
+  assert.equal(r.zoning.agree, "unknown");
+  assert.equal(r.log.at(-1).단계, "용도지역 교차 확인");
+  assert.equal(r.log.at(-1).판정, "실패");
+});
+test("좌표가 필지 밖이면 필지 안쪽 점으로 레이어 조회", async () => {
+  let pt = null;
+  await analyze(127.149, 35.825, R, { fetchParcels: async () => [feat()],
+    fetchLandUse: async () => PLAN, fetchZone: async (lon, lat) => { pt = [lon, lat]; return ZONE; } });
+  assert.ok(Math.abs(pt[0] - 127.148) < 0.0002 && Math.abs(pt[1] - 35.8242) < 0.0002);
+});

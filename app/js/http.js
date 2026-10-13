@@ -10,6 +10,9 @@ export const TARGET_URLS = {
   vworld_search: "https://api.vworld.kr/req/search",
   juso: "https://business.juso.go.kr/addrlink/addrLinkApi.do",
 };
+// 브이월드 국가중점(NED) API: 정해진 기능 이름만 허용
+export const NED_BASE = "https://api.vworld.kr/ned/data/";
+export const NED_OPS = ["getLandUseAttr", "ladfrlList", "getLandCharacteristics", "getIndvdLandPriceAttr"];
 const DATA_GO_KR = "https://apis.data.go.kr/";
 const DATA_PATH_RE = /^[0-9]{7}\/[A-Za-z0-9_]+(\/[A-Za-z0-9_]+){0,3}$/;
 
@@ -19,6 +22,7 @@ export function buildUrl(target, params, path) {
   let base;
   if (target in TARGET_URLS) base = TARGET_URLS[target];
   else if (target === "datagokr" && path && DATA_PATH_RE.test(path)) base = DATA_GO_KR + path;
+  else if (target === "vworld_ned" && NED_OPS.includes(path)) base = NED_BASE + path;
   else throw new ApiError(`허용되지 않은 대상: ${target}`);
   const qs = new URLSearchParams(params).toString();
   return qs ? `${base}?${qs}` : base;

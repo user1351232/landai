@@ -13,6 +13,13 @@ fn base_url(target: &str, path: Option<&str>) -> Result<String, String> {
         "vworld_address" => Ok("https://api.vworld.kr/req/address".into()),
         "vworld_search" => Ok("https://api.vworld.kr/req/search".into()),
         "juso" => Ok("https://business.juso.go.kr/addrlink/addrLinkApi.do".into()),
+        // 브이월드 국가중점 API: 정해진 기능 이름만
+        "vworld_ned" => match path {
+            Some(op @ ("getLandUseAttr" | "ladfrlList" | "getLandCharacteristics" | "getIndvdLandPriceAttr")) => {
+                Ok(format!("https://api.vworld.kr/ned/data/{op}"))
+            }
+            other => Err(format!("허용되지 않은 국가중점 기능: {}", other.unwrap_or(""))),
+        },
         "datagokr" => {
             let p = path.ok_or_else(|| "공공데이터포털 경로가 없습니다".to_string())?;
             let ok = !p.is_empty()
@@ -39,7 +46,7 @@ async fn http_get(
     let url = base_url(&target, path.as_deref())?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
-        .user_agent("landai-app/0.6")
+        .user_agent("landai-app/0.7")
         .build()
         .map_err(|e| e.to_string())?;
     let resp = client
@@ -78,5 +85,11 @@ mod tests {
         assert!(base_url("https://evil.example", None).is_err());
         assert!(base_url("datagokr", Some("../etc")).is_err());
         assert!(base_url("datagokr", Some("1613000/arLandUseInfoService/DTarLandUseInfo")).is_ok());
+        assert_eq!(
+            base_url("vworld_ned", Some("getLandUseAttr")).unwrap(),
+            "https://api.vworld.kr/ned/data/getLandUseAttr"
+        );
+        assert!(base_url("vworld_ned", Some("../req/data")).is_err());
+        assert!(base_url("vworld_ned", None).is_err());
     }
 }

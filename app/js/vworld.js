@@ -70,6 +70,55 @@ export async function parcelsAt(lon, lat) {
   return resp.result.featureCollection.features;
 }
 
+// 용도지역 레이어: 도시지역·관리지역·농림지역·자연환경보전지역
+export const ZONE_LAYERS = ["LT_C_UQ111", "LT_C_UQ112", "LT_C_UQ113", "LT_C_UQ114"];
+
+// 위치의 용도지역 도형. 세부 이름(uname)이 있는 것만 돌려줍니다. 없으면 null.
+export async function zoneAt(lon, lat) {
+  for (const layer of ZONE_LAYERS) {
+    const body = await get("vworld_data", params({
+      service: "data", request: "GetFeature", data: layer,
+      geomFilter: `POINT(${lon} ${lat})`, crs: "EPSG:4326",
+      geometry: "true", attribute: "true", size: "10", page: "1",
+    }));
+    const resp = body.response || {};
+    if (resp.status === "NOT_FOUND") continue;
+    if (resp.status !== "OK") throw new VworldError(errorText(resp));
+    const named = (resp.result?.featureCollection?.features || []).filter((f) => f.properties?.uname);
+    if (named.length) return { layer, feature: named[0], name: named[0].properties.uname };
+  }
+  return null;
+}
+
+// 토지이용계획 (국가중점 API). 필지 하나의 용도지역·지구·구역 목록 원본 항목을 돌려줍니다.
+export async function landUse(pnu) {
+  let body;
+  try {
+    body = await getJson("vworld_ned", params({ pnu, numOfRows: "100", pageNo: "1" }),
+      { path: "getLandUseAttr" });
+  } catch (e) {
+    throw new VworldError(`브이월드 ${e instanceof ApiError ? e.message : e}`);
+  }
+  return nedItems(body);
+}
+
+// 국가중점 API 응답에서 항목 목록 꺼내기. 응답 모양이 두 가지라 둘 다 받습니다.
+//   { landUses: { field: [...], totalCount, resultCode, resultMsg } }
+//   { response: { status, fields: { field: [...] } } } 또는 { response: { status: "ERROR", error } }
+export function nedItems(body) {
+  if (body?.response?.status === "ERROR" || body?.response?.error) throw new VworldError(errorText(body.response));
+  if (body?.response?.status === "NOT_FOUND") return [];
+  const box = body?.response?.fields || body?.response
+    || Object.values(body || {}).find((v) => v && typeof v === "object") || {};
+  const code = box.resultCode ?? box.error?.code;
+  if (code && !["OK", "0", "00", "INFO-000", "NORMAL_SERVICE"].includes(String(code))) {
+    if (code === "NOT_FOUND" || code === "INFO-200") return [];
+    throw new VworldError(errorText({ error: { code, text: box.resultMsg || box.error?.text || "" } }));
+  }
+  const field = box.field ?? box.fields?.field ?? [];
+  return Array.isArray(field) ? field : [field];
+}
+
 export function tileUrl(key, layer) {
   const ext = layer === "Satellite" ? "jpeg" : "png";
   return `https://api.vworld.kr/req/wmts/1.0.0/${key}/${layer}/{z}/{y}/{x}.${ext}`;

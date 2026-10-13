@@ -7,7 +7,7 @@ globalThis.localStorage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) 
   removeItem: (k) => mem.delete(k) };
 mem.set("landai.VWORLD_KEY", "TESTKEY");
 
-const { geocode, parcelsAt, tileUrl, VworldError } = await import("../app/js/vworld.js");
+const { geocode, parcelsAt, tileUrl, VworldError, zoneAt, landUse, nedItems } = await import("../app/js/vworld.js");
 const { buildUrl, getJson, ApiError } = await import("../app/js/http.js");
 
 function mockFetch(bodies) {
@@ -68,3 +68,38 @@ test("브라우저 접속 실패 안내", async () => {
   await assert.rejects(getJson("vworld_data", {}), /앱으로 실행/);
 });
 test("타일 주소", () => assert.ok(tileUrl("K", "Satellite").endsWith("/K/Satellite/{z}/{y}/{x}.jpeg")));
+
+test("용도지역 레이어: 이름 없는 도시지역 도형은 건너뛰고 다음 레이어까지", async () => {
+  const calls = mockFetch([
+    { response: { status: "OK", result: { featureCollection: { features: [{ properties: { uname: null, ucode: "UQA01X" } }] } } } },
+    { response: { status: "NOT_FOUND" } },
+    { response: { status: "OK", result: { featureCollection: { features: [{ properties: { uname: "계획관리지역" } }] } } } },
+  ]);
+  const z = await zoneAt(127.1, 35.8);
+  assert.deepEqual([z.layer, z.name], ["LT_C_UQ113", "계획관리지역"]);
+  assert.ok(calls[0].includes("data=LT_C_UQ111") && calls[0].includes("geomFilter=POINT"));
+  mockFetch([1, 2, 3, 4].map(() => ({ response: { status: "NOT_FOUND" } })));
+  assert.equal(await zoneAt(127.1, 35.8), null);
+});
+test("토지이용계획: 국가중점 API 주소와 두 가지 응답 모양", async () => {
+  const calls = mockFetch([{ landUses: { field: [{ prposAreaDstrcCodeNm: "일반상업지역", cnflcAt: "1" }],
+    totalCount: "1", resultCode: null, resultMsg: null } }]);
+  const items = await landUse("5211114700105680001");
+  assert.equal(items[0].prposAreaDstrcCodeNm, "일반상업지역");
+  assert.ok(calls[0].startsWith("https://api.vworld.kr/ned/data/getLandUseAttr?"));
+  assert.ok(calls[0].includes("pnu=5211114700105680001") && calls[0].includes("domain="));
+  // 항목 하나면 배열이 아니라 객체로 오는 경우
+  assert.equal(nedItems({ response: { status: "OK", fields: { field: { prposAreaDstrcCodeNm: "준주거지역" } } } }).length, 1);
+  assert.deepEqual(nedItems({ landUses: { field: [], totalCount: "0" } }), []);
+});
+test("토지이용계획 오류는 키 안내와 함께", async () => {
+  assert.throws(() => nedItems({ landUses: { resultCode: "INCORRECT_KEY", resultMsg: "인증키 정보가 올바르지 않습니다." } }),
+    (e) => e instanceof VworldError && e.message.includes("INCORRECT_KEY") && e.message.includes("등록 서비스 URL"));
+  assert.throws(() => nedItems({ response: { status: "ERROR", error: { code: "INVALID_KEY", text: "x" } } }), /INVALID_KEY/);
+  assert.deepEqual(nedItems({ response: { status: "NOT_FOUND" } }), []);
+});
+test("국가중점 API 는 정해진 기능만", () => {
+  assert.ok(buildUrl("vworld_ned", { a: 1 }, "getLandUseAttr").startsWith("https://api.vworld.kr/ned/data/getLandUseAttr?"));
+  assert.throws(() => buildUrl("vworld_ned", {}, "../req/data"), ApiError);
+  assert.throws(() => buildUrl("vworld_ned", {}, null), ApiError);
+});

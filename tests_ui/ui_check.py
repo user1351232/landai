@@ -15,7 +15,13 @@ def feat(addr="전북특별자치도 전주시 완산구 서노송동 568-1", pn
     return {"type": "Feature", "geometry": SQ, "properties": {"gosi_year": "2025", "pnu": pnu, "jibun": "568-1 대",
             "bonbun": "568", "bubun": "1", "addr": addr, "gosi_month": "01", "jiga": "1520000"}}
 
-scenario = {"parcels": [feat()], "geocode": {"x": "127.148", "y": "35.8242"}, "error": None, "addr_error": None}
+ZONE_SQ = {"type": "Polygon", "coordinates": [[[127.147, 35.823], [127.149, 35.823], [127.149, 35.825],
+                                              [127.147, 35.825], [127.147, 35.823]]]}
+PLAN = [{"prposAreaDstrcCodeNm": "일반상업지역", "prposAreaDstrcCode": "UQA220", "cnflcAt": "1", "cnflcAtNm": "포함"},
+        {"prposAreaDstrcCodeNm": "방화지구", "cnflcAt": "1", "cnflcAtNm": "포함"},
+        {"prposAreaDstrcCodeNm": "대공방어협조구역", "cnflcAt": "1", "cnflcAtNm": "포함"}]
+scenario = {"parcels": [feat()], "geocode": {"x": "127.148", "y": "35.8242"}, "error": None, "addr_error": None,
+            "plan": PLAN, "plan_error": None, "zone": "일반상업지역"}
 
 def vworld(route):
     url = route.request.url
@@ -26,6 +32,17 @@ def vworld(route):
         body = {"response": {"status": "ERROR", "error": {"code": scenario["error"], "text": "시험용 오류"}}}
     elif "/req/address" in url:
         body = {"response": {"status": "OK", "refined": {"text": "정제된 주소"}, "result": {"point": scenario["geocode"]}}}
+    elif "/ned/data/getLandUseAttr" in url:
+        if scenario["plan_error"]:
+            body = {"landUses": {"resultCode": scenario["plan_error"], "resultMsg": "인증키 정보가 올바르지 않습니다."}}
+        else:
+            body = {"landUses": {"field": scenario["plan"], "totalCount": str(len(scenario["plan"])),
+                                 "resultCode": None, "resultMsg": None}}
+    elif "/req/data" in url and "LT_C_UQ" in url:
+        hit = scenario["zone"] and "LT_C_UQ111" in url
+        body = {"response": {"status": "OK", "result": {"featureCollection": {"features": [
+            {"type": "Feature", "geometry": ZONE_SQ, "properties": {"uname": scenario["zone"], "ucode": "UQA220"}}]}}}} \
+            if hit else {"response": {"status": "NOT_FOUND"}}
     elif "/req/data" in url:
         fs = scenario["parcels"]
         body = {"response": {"status": "OK", "result": {"featureCollection": {"features": fs}}}} if fs \
@@ -75,12 +92,14 @@ def main():
             page.click("#check-keys"); page.wait_for_function("!document.querySelector('#check-keys').disabled", timeout=5000)
             items = page.locator("#key-check li")
             check(f"{tag}: 키 점검 - 주소 검색 실패 표시",
-                  items.count() == 2 and "INVALID_KEY" in items.nth(0).inner_text() and "fail" in items.nth(0).get_attribute("class"))
+                  items.count() == 4 and "INVALID_KEY" in items.nth(0).inner_text() and "fail" in items.nth(0).get_attribute("class"))
             check(f"{tag}: 키 점검 - 필지 조회 정상 표시", "정상 (필지 1개)" in items.nth(1).inner_text())
             page.screenshot(path=str(OUT / f"ui_{tag}_keycheck.png"))
             scenario.update(addr_error=None)
             page.click("#check-keys"); page.wait_for_function("!document.querySelector('#check-keys').disabled", timeout=5000)
-            check(f"{tag}: 키 점검 - 둘 다 정상", page.locator("#key-check li.ok").count() == 2)
+            check(f"{tag}: 키 점검 - 넷 다 정상", page.locator("#key-check li.ok").count() == 4)
+            check(f"{tag}: 키 점검 - 용도지역·토지이용계획", "정상 (일반상업지역)" in page.inner_text("#key-check")
+                  and "정상 (항목 3개)" in page.inner_text("#key-check"))
             page.click("#settings button[value=cancel]"); page.wait_for_timeout(100)
 
             # 위경도 분석
@@ -89,13 +108,31 @@ def main():
             txt = page.inner_text("#panel")
             check(f"{tag}: 위경도 → 확정", "연결 확신도: 확정" in txt)
             check(f"{tag}: 주소·면적·공시지가 표시", "서노송동" in txt and "㎡" in txt and "1,520,000 원/㎡" in txt)
-            heads = page.locator("#panel table").first.locator("th").all_inner_texts()
+            heads = page.locator("#panel table.props th").all_inner_texts()
             check(f"{tag}: 속성표 순서 (주소 → 지번 → 지목 … PNU)",
                   heads[:3] == ["지번 주소", "지번", "지목"] and heads[-1] == "필지고유번호(PNU)")
             check(f"{tag}: 지목·공시 기준 표시", "대" in txt and "2025년 1월" in txt and "(지목: 대)" in txt)
-            check(f"{tag}: 이력서 6단계", page.locator("#panel table").last.locator("tbody tr").count() == 6)
-            check(f"{tag}: 지도에 필지 경계", len(page.evaluate("window.__drawn.geojson")) == 1)
+            check(f"{tag}: 이력서 9단계", page.locator("#panel table.log tbody tr").count() == 9)
+            check(f"{tag}: 용도지역 표시 (두 자료 일치)", "일반상업지역" in page.inner_text(".zone-chip")
+                  and "일치" in page.inner_text(".zone-head"))
+            lim = page.inner_text("table.limits")
+            check(f"{tag}: 전주시 조례 용적률 900% · 법정 1300% · 건폐율 80%",
+                  "900% (법정 상한 1300%)" in lim and "80%" in lim and "전주시 도시계획 조례" in lim)
+            check(f"{tag}: 최대 건축면적·연면적", "최대 건축면적" in lim and "최대 연면적" in lim)
+            check(f"{tag}: 지구·구역 목록", "방화지구" in txt and "대공방어협조구역" in txt)
+            check(f"{tag}: 지도에 필지 경계 + 용도지역 경계", len(page.evaluate("window.__drawn.geojson")) == 2)
             page.screenshot(path=str(OUT / f"ui_{tag}_result.png"), full_page=True)
+
+            # 토지이용계획 실패 → 레이어 값만으로 계속
+            scenario.update(plan_error="INCORRECT_KEY")
+            page.click("#run"); page.wait_for_timeout(600)
+            t2 = page.inner_text("#panel")
+            check(f"{tag}: 토지이용계획 실패해도 용도지역 표시", "용도지역도 값만 확인" in t2 and "확신도: 확정" in t2)
+            check(f"{tag}: 실패 이유는 이력서에", "INCORRECT_KEY" in page.inner_text("table.log"))
+            scenario.update(plan_error=None, zone=None)
+            page.click("#run"); page.wait_for_timeout(500)
+            check(f"{tag}: 레이어 없으면 토지이용계획 값", "토지이용계획 값만 확인" in page.inner_text("#panel"))
+            scenario.update(zone="일반상업지역")
 
             # 주소 분석
             page.click("[data-mode=address].tab")
