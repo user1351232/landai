@@ -2,8 +2,8 @@
 import { writeFileSync } from "node:fs";
 
 const keys = {
-  VWORLD_KEY: process.env.VWORLD_KEY || "",
-  VWORLD_DOMAIN: process.env.VWORLD_DOMAIN || "",
+  VWORLD_KEY: (process.env.VWORLD_KEY || "").trim(),
+  VWORLD_DOMAIN: (process.env.VWORLD_DOMAIN || "").trim(),
 };
 writeFileSync("app/js/keys.js",
   "// 빌드 때 자동 생성된 파일입니다.\nexport const BUILD_KEYS = " + JSON.stringify(keys, null, 2) + ";\n");

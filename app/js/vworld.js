@@ -24,9 +24,21 @@ async function get(target, p) {
   }
 }
 
+// 자주 나오는 키 오류에 해결 방법을 붙입니다.
+const KEY_HINTS = {
+  INCORRECT_KEY: (domain) => `키는 맞지만 등록 서비스 URL 이 다릅니다. 앱이 보낸 URL: ${domain}. ` +
+    "브이월드 인증키 관리에 등록된 서비스 URL 을 '설정 → 브이월드 등록 서비스 URL' 에 글자 하나까지 똑같이 넣으세요.",
+  INVALID_KEY: () => "브이월드에 없는 키입니다. '설정' 의 키가 브이월드 인증키 관리의 키와 같은지, " +
+    "그 키의 활용 API 에 지오코더·2D데이터가 체크돼 있는지 확인하세요.",
+  UNAVAILABLE_KEY: () => "키를 지금 쓸 수 없는 상태입니다. 브이월드 인증키 관리에서 상태와 만료일을 확인하세요.",
+  OVER_REQUEST_LIMIT: () => "오늘 사용량을 넘었습니다. 내일 다시 시도하세요.",
+};
+
 function errorText(resp) {
   const err = resp.error || {};
-  return `브이월드 오류 ${err.code || ""}: ${err.text || resp.status || ""}`.trim();
+  const base = `브이월드 오류 ${err.code || ""}: ${err.text || resp.status || ""}`.trim();
+  const hint = KEY_HINTS[err.code];
+  return hint ? `${base} → ${hint(getSetting("VWORLD_DOMAIN") || "http://localhost")}` : base;
 }
 
 export async function geocode(address) {

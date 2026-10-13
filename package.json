@@ -1,6 +1,6 @@
 {
   "name": "landai-app",
-  "version": "0.6.0",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "description": "위치 기반 AI 토지 분석 앱 (윈도우·안드로이드 공용)",

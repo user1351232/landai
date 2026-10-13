@@ -1,9 +1,10 @@
 // 앱 화면 — 스마트폰(Capacitor)과 윈도우(Tauri)가 같은 코드를 씁니다
 import { analyze } from "./pipeline.js";
 import { REGIONS } from "./regions.js";
-import { getSetting, setSetting } from "./settings.js";
+import { describeKey, getSetting, setSetting } from "./settings.js";
 import { platform } from "./http.js";
 import * as vworld from "./vworld.js";
+import { parcelRows } from "./parcel.js";
 
 const $ = (sel) => document.querySelector(sel);
 const PLATFORM_KO = { "windows-app": "윈도우 앱", "mobile-app": "스마트폰 앱", browser: "웹 브라우저" };
@@ -101,8 +102,8 @@ function renderPanel() {
           el("div", { class: "value" }, `${r.area_m2.toLocaleString("ko-KR")} ㎡`)),
         el("div", { class: "metric" }, el("div", { class: "label" }, "개별공시지가"), el("div", { class: "value" }, jiga))),
       el("div", { class: "code" }, r.pnu?.pnu || r.pnu?.raw || ""),
-      el("table", {}, el("tbody", {}, Object.entries(p).map(([k, v]) =>
-        el("tr", {}, el("th", {}, vworld.PARCEL_LABELS[k] || k), el("td", {}, v))))),
+      el("table", {}, el("tbody", {}, parcelRows(p).map(([k, v]) =>
+        el("tr", {}, el("th", {}, k), el("td", {}, String(v)))))),
     );
   }
 
@@ -180,10 +181,44 @@ function openSettings() {
   $("#set-vworld-key").value = localStorageValue("VWORLD_KEY");
   $("#set-vworld-domain").value = getSetting("VWORLD_DOMAIN");
   $("#set-basemap").value = getSetting("BASEMAP") || "Satellite";
-  const hasKey = Boolean(getSetting("VWORLD_KEY"));
   $("#platform-info").textContent =
-    `실행 환경: ${PLATFORM_KO[platform()]} · 브이월드 키: ${hasKey ? "있음" : "없음"}`;
+    `실행 환경: ${PLATFORM_KO[platform()]} · 브이월드 키: ${describeKey("VWORLD_KEY")}`;
+  $("#key-check").replaceChildren();
   $("#settings").showModal();
+}
+
+// 지도·주소 검색·필지 조회를 따로 시험해서 어느 기능이 막혔는지 보여 줍니다.
+async function checkKeys() {
+  saveSettings();
+  $("#platform-info").textContent =
+    `실행 환경: ${PLATFORM_KO[platform()]} · 브이월드 키: ${describeKey("VWORLD_KEY")}`;
+  const list = $("#key-check");
+  list.replaceChildren();
+  const btn = $("#check-keys");
+  btn.disabled = true;
+  const tests = [
+    ["주소 검색 (지오코더 API)", async () => {
+      const r = await vworld.geocode("전북특별자치도 전주시 완산구 노송광장로 10");
+      return r ? `정상 (${r.lat.toFixed(4)}, ${r.lon.toFixed(4)})` : "응답은 왔지만 결과 없음";
+    }],
+    ["필지 조회 (2D데이터 API)", async () => {
+      const f = await vworld.parcelsAt(127.148, 35.8242);
+      return `정상 (필지 ${f.length}개)`;
+    }],
+  ];
+  for (const [name, fn] of tests) {
+    const li = document.createElement("li");
+    li.textContent = `${name}: 확인 중…`;
+    list.appendChild(li);
+    try {
+      li.textContent = `${name}: ${await fn()}`;
+      li.className = "ok";
+    } catch (err) {
+      li.textContent = `${name}: ${err.message || err}`;
+      li.className = "fail";
+    }
+  }
+  btn.disabled = false;
 }
 function localStorageValue(name) {
   try { return localStorage.getItem("landai." + name) || ""; } catch { return ""; }
@@ -214,6 +249,7 @@ async function init() {
   $("#input-form").addEventListener("submit", onSubmit);
   $("#open-settings").addEventListener("click", openSettings);
   $("#save-settings").addEventListener("click", saveSettings);
+  $("#check-keys").addEventListener("click", checkKeys);
 
   const [lon, lat] = region().center;
   $("#lat").value = lat; $("#lon").value = lon;

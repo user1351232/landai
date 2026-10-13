@@ -37,7 +37,12 @@ test("필지 조회 성공·없음·오류", async () => {
   mockFetch([{ response: { status: "NOT_FOUND" } }]);
   assert.deepEqual(await parcelsAt(127, 35), []);
   mockFetch([{ response: { status: "ERROR", error: { code: "INCORRECT_KEY", text: "키 오류" } } }]);
-  await assert.rejects(parcelsAt(127, 35), (e) => e instanceof VworldError && e.message.includes("INCORRECT_KEY"));
+  await assert.rejects(parcelsAt(127, 35), (e) => e instanceof VworldError && e.message.includes("INCORRECT_KEY")
+    && e.message.includes("앱이 보낸 URL: http://localhost") && e.message.includes("등록 서비스 URL"));
+  mockFetch([{ response: { status: "ERROR", error: { code: "INVALID_KEY", text: "등록되지 않은 인증키입니다." } } }]);
+  await assert.rejects(geocode("전주시청"), (e) => e.message.includes("INVALID_KEY") && e.message.includes("활용 API"));
+  mockFetch([{ response: { status: "ERROR", error: { code: "SYSTEM_ERROR", text: "x" } } }]);
+  await assert.rejects(parcelsAt(127, 35), (e) => !e.message.includes("→"));
 });
 test("키가 없으면 안내", async () => {
   mem.delete("landai.VWORLD_KEY");

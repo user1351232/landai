@@ -40,8 +40,8 @@ button:disabled { opacity: .6; cursor: default; }
 .tab { padding: 6px 12px; border-radius: 999px; }
 .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .inputs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.mode { display: flex; gap: 8px; flex: 1 1 280px; }
-.mode input { flex: 1; }
+.mode { display: flex; gap: 8px; flex: 1 1 280px; min-width: 0; }
+.mode input { flex: 1 1 0; min-width: 0; width: 100%; }
 .hint { color: var(--muted); align-items: center; }
 .hidden { display: none !important; }
 
@@ -82,3 +82,9 @@ dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--b
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .top h1 { font-size: 15px; }
 }
+.key-check { margin: 4px 0 0; padding-left: 18px; }
+.key-check .ok { color: #3fb950; }
+.key-check .fail { color: #f85149; }
+/* 휴대폰 화면에서 가로로 넘치지 않게 */
+.panel { min-width: 0; overflow-wrap: anywhere; }
+.error, .notice { overflow-wrap: anywhere; }

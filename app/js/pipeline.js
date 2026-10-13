@@ -2,6 +2,7 @@
 // (landai/pipeline.py 와 같은 단계·판정)
 import * as geo from "./geo.js";
 import { standardize } from "./pnu.js";
+import { parseJimok } from "./parcel.js";
 
 const KO = { pass: "통과", warn: "경고", fail: "실패" };
 
@@ -47,7 +48,10 @@ export async function analyze(lon, lat, region, { choice = null, fetchParcels } 
   const feat = feats[choice ?? 0];
   out.parcel = feat;
   const props = feat.properties || {};
-  step("필지 조회", "vworld.parcelsAt", "pass", `${props.addr || props.jibun || "필지"} 찾음`);
+  const jm = parseJimok(props.jibun);
+  out.jimok = jm ? jm.name : null;
+  step("필지 조회", "vworld.parcelsAt", "pass",
+    `${props.addr || props.jibun || "필지"}${jm ? ` (지목: ${jm.name})` : ""} 찾음`);
 
   // 3. 필지번호 검사
   const r = standardize(props.pnu, { legacySido: region.legacy_sido_code, currentSido: region.sido_code });
